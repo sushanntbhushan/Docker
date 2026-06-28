@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 class="mb-4">Employee Dashboard</h3>
+
+<div class="row mb-4">
+
+<div class="col-md-6">
+<a href="/mark_attendance" class="btn btn-success w-100">Mark Login Attendance</a>
+</div>
+
+<div class="col-md-6">
+<a href="/logout_attendance" class="btn btn-danger w-100">Mark Logout Attendance</a>
+</div>
+
+</div>
+
+<div class="card shadow">
+
+<div class="card-header bg-primary text-white">
+My Attendance
+</div>
+
+<div class="card-body">
+
+<table class="table table-striped">
+
+<tr>
+<th>Login</th>
+<th>Logout</th>
+<th>Status</th>
+</tr>
+
+{% for a in attendance %}
+
+<tr>
+<td>{{a.login_time}}</td>
+<td>{{a.logout_time}}</td>
+
+<td>
+
+{% if a.status == "Late" %}
+<span class="badge bg-warning">Late</span>
+
+{% elif a.status == "Half Day" %}
+<span class="badge bg-danger">Half Day</span>
+
+{% else %}
+<span class="badge bg-success">{{a.status}}</span>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+{% endblock %}

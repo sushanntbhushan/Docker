@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 class="mb-4">Employee Dashboard</h3>
+
+<!-- ================= LEAVE BALANCE ================= -->
+<div class="card mb-3 shadow">
+    <div class="card-body">
+        <h5 class="mb-3">Leave Balance</h5>
+
+        <p>
+            <strong>Casual/Sick:</strong>
+            {{ "%.2f"|format(balance["casual_balance"]) }}
+            /
+            {{ "%.2f"|format(balance["casual_total"]) }}
+        </p>
+
+        <p>
+            <strong>Annual:</strong>
+            {{ "%.2f"|format(balance["annual_balance"]) }}
+            /
+            {{ "%.2f"|format(balance["annual_total"]) }}
+        </p>
+    </div>
+</div>
+
+<!-- ================= ACTION BUTTONS ================= -->
+<div class="row mb-4">
+
+    <div class="col-md-3">
+        <a href="/mark_attendance" class="btn btn-success w-100">Mark Login</a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/logout_attendance" class="btn btn-danger w-100">
+            Mark Logout
+        </a>
+
+        <!-- Confirmation button -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                {% if category == 'warning' %}
+                    <a href="/logout_attendance?confirm=yes" class="btn btn-warning w-100 mt-2">
+                        Confirm Half Day Logout
+                    </a>
+                {% endif %}
+            {% endfor %}
+        {% endwith %}
+    </div>
+
+    <div class="col-md-3">
+        <a href="/apply_leave" class="btn btn-warning w-100">📝 Apply Leave</a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/change_password" class="btn btn-secondary w-100">Change Password</a>
+    </div>
+
+</div>
+
+<!-- ================= ATTENDANCE ================= -->
+<div class="card shadow">
+
+    <div class="card-header bg-primary text-white">
+        My Attendance
+    </div>
+
+    <div class="card-body">
+
+        <table class="table table-striped">
+
+            <tr>
+                <th>Login</th>
+                <th>Logout</th>
+                <th>Status</th>
+            </tr>
+
+            {% for a in attendance %}
+
+            <tr>
+                <td>{{ a.login_time }}</td>
+                <td>{{ a.logout_time }}</td>
+
+                <td>
+                    {% if a.status == "Late" %}
+                        <span class="badge bg-warning">Late</span>
+
+                    {% elif a.status == "Half Day" %}
+                        <span class="badge bg-danger">Half Day</span>
+
+                    {% elif a.status == "Leave" %}
+                        <span class="badge bg-secondary">Leave</span>
+
+                    {% else %}
+                        <span class="badge bg-success">{{ a.status }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

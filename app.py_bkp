@@ -1,0 +1,267 @@
+from flask import Flask, render_template, request, redirect, session, flash
+from models import db, User, Attendance
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, time, date
+
+app = Flask(__name__)
+app.secret_key = "attendance_secret"
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
+
+@app.route('/', methods=['GET','POST'])
+def login():
+
+    if request.method == "POST":
+
+        username = request.form['username']
+        password = request.form['password']
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and check_password_hash(user.password,password):
+
+            session['user_id'] = user.id
+            session['role'] = user.role
+
+            if user.first_login:
+                return redirect('/reset_password')
+
+            if user.role == "admin":
+                return redirect('/admin')
+
+            return redirect('/dashboard')
+
+        flash("Invalid username or password", "danger")
+
+    return render_template("login.html")
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/')
+
+
+@app.route('/admin')
+def admin():
+
+    if 'user_id' not in session or session.get('role') != "admin":
+        return redirect('/')
+
+    users = User.query.filter_by(role="employee").all()
+    attendance = Attendance.query.all()
+
+    return render_template("admin_dashboard.html", users=users, attendance=attendance)
+
+
+@app.route('/create_employee', methods=['POST'])
+def create_employee():
+
+    if session.get('role') != "admin":
+        return redirect('/')
+
+    username = request.form['username']
+    email = request.form['email']
+    password = generate_password_hash(request.form['password'])
+
+    user = User(
+        username=username,
+        email=email,
+        password=password,
+        role="employee",
+        first_login=True
+    )
+
+    db.session.add(user)
+    db.session.commit()
+
+    flash("Employee created successfully", "success")
+
+    return redirect('/admin')
+
+
+@app.route('/delete_employee/<int:user_id>')
+def delete_employee(user_id):
+
+    if session.get('role') != "admin":
+        return redirect('/')
+
+    user = User.query.get(user_id)
+
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+
+    flash("Employee deleted", "danger")
+
+    return redirect('/admin')
+
+
+@app.route('/dashboard')
+def dashboard():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    user_id = session['user_id']
+    attendance = Attendance.query.filter_by(user_id=user_id).all()
+
+    return render_template("dashboard.html", attendance=attendance)
+
+
+# -------- CHANGE OWN PASSWORD -------- #
+
+@app.route('/change_password', methods=['GET','POST'])
+def change_password():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    if request.method == "POST":
+
+        user = User.query.get(session['user_id'])
+
+        new_password = generate_password_hash(request.form['password'])
+
+        user.password = new_password
+        db.session.commit()
+
+        flash("Password updated successfully", "success")
+
+        if user.role == "admin":
+            return redirect('/admin')
+
+        return redirect('/dashboard')
+
+    return render_template("reset_password.html")
+
+
+# -------- ADMIN RESET USER PASSWORD -------- #
+
+@app.route('/admin_reset_password/<int:user_id>', methods=['GET','POST'])
+def admin_reset_password(user_id):
+
+    if session.get('role') != "admin":
+        return redirect('/')
+
+    user = User.query.get(user_id)
+
+    if request.method == "POST":
+
+        user.password = generate_password_hash(request.form['password'])
+        db.session.commit()
+
+        flash("User password updated", "success")
+
+        return redirect('/admin')
+
+    return render_template("reset_password.html")
+
+
+@app.route('/mark_attendance')
+def mark_attendance():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    user_id = session['user_id']
+    now = datetime.now()
+    today = date.today()
+
+    existing = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        db.func.date(Attendance.login_time) == today
+    ).first()
+
+    if existing:
+        flash("You have already marked attendance today", "danger")
+        return redirect('/dashboard')
+
+    login_time = now.time()
+    status = "Present"
+
+    if login_time > time(13,0):
+        flash("Attendance closed after 01:00 PM", "danger")
+        return redirect('/dashboard')
+
+    elif login_time >= time(12,0):
+        status = "Half Day"
+
+    elif login_time > time(9,15):
+        status = "Late"
+
+    attendance = Attendance(
+        user_id=user_id,
+        login_time=now,
+        status=status
+    )
+
+    db.session.add(attendance)
+    db.session.commit()
+
+    flash("Attendance marked successfully", "success")
+
+    return redirect('/dashboard')
+
+
+@app.route('/logout_attendance')
+def logout_attendance():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    user_id = session['user_id']
+    today = date.today()
+
+    attendance = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        db.func.date(Attendance.login_time) == today
+    ).first()
+
+    if not attendance:
+        flash("You must login attendance first", "danger")
+        return redirect('/dashboard')
+
+    if attendance.logout_time:
+        flash("You already logged out today", "danger")
+        return redirect('/dashboard')
+
+    attendance.logout_time = datetime.now()
+    db.session.commit()
+
+    flash("Logout attendance marked", "success")
+
+    return redirect('/dashboard')
+
+
+@app.route('/reset_password', methods=['GET','POST'])
+def reset_password():
+
+    if 'user_id' not in session:
+        return redirect('/')
+
+    if request.method == "POST":
+
+        user = User.query.get(session['user_id'])
+
+        user.password = generate_password_hash(request.form['password'])
+        user.first_login = False
+
+        db.session.commit()
+
+        flash("Password updated successfully", "success")
+
+        return redirect('/')
+
+    return render_template("reset_password.html")
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

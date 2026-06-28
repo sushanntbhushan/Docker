@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 class="mb-4">Admin Dashboard</h3>
+
+<a href="/change_password" class="btn btn-warning mb-3">Change My Password</a>
+
+<div class="card shadow mb-4">
+
+<div class="card-header bg-success text-white">
+Create Employee
+</div>
+
+<div class="card-body">
+
+<form action="/create_employee" method="POST">
+
+<div class="row">
+
+<div class="col-md-4">
+<input class="form-control" placeholder="Username" name="username">
+</div>
+
+<div class="col-md-4">
+<input class="form-control" placeholder="Email" name="email">
+</div>
+
+<div class="col-md-4">
+<input type="password" class="form-control" placeholder="Password" name="password">
+</div>
+
+</div>
+
+<br>
+
+<button class="btn btn-success">Create Employee</button>
+
+</form>
+
+</div>
+
+</div>
+
+
+<div class="card shadow mb-4">
+
+<div class="card-header bg-dark text-white">
+Employees
+</div>
+
+<div class="card-body">
+
+<table class="table table-bordered">
+
+<tr>
+<th>ID</th>
+<th>Username</th>
+<th>Email</th>
+<th>Actions</th>
+</tr>
+
+{% for u in users %}
+
+<tr>
+
+<td>{{u.id}}</td>
+<td>{{u.username}}</td>
+<td>{{u.email}}</td>
+
+<td>
+
+<a class="btn btn-warning btn-sm" href="/admin_reset_password/{{u.id}}">
+Change Password
+</a>
+
+<a class="btn btn-danger btn-sm" href="/delete_employee/{{u.id}}">
+Delete
+</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+
+<div class="card shadow">
+
+<div class="card-header bg-primary text-white">
+Attendance Report
+</div>
+
+<div class="card-body">
+
+<table class="table table-striped">
+
+<tr>
+<th>User ID</th>
+<th>Login Time</th>
+<th>Logout Time</th>
+<th>Status</th>
+</tr>
+
+{% for a in attendance %}
+
+<tr>
+
+<td>{{a.user_id}}</td>
+<td>{{a.login_time}}</td>
+<td>{{a.logout_time}}</td>
+
+<td>
+
+{% if a.status == "Late" %}
+<span class="badge bg-warning">Late</span>
+
+{% elif a.status == "Half Day" %}
+<span class="badge bg-danger">Half Day</span>
+
+{% else %}
+<span class="badge bg-success">{{a.status}}</span>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+{% endblock %}
